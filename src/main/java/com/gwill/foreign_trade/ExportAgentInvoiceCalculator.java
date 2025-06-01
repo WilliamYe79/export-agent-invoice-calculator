@@ -34,7 +34,7 @@ public class ExportAgentInvoiceCalculator extends JFrame {
     };
 
     private static final String DETAILED_RESULT_PANEL_KEY = "detailed";
-    private static final String SIMPLE_RESULT_PANEL_KEY = "simple";
+    private static final String CONCISE_RESULT_PANEL_KEY = "concise";
 
     // GUI组件
     private JTextField purchaseAmountField;  // 采购金额
@@ -46,7 +46,7 @@ public class ExportAgentInvoiceCalculator extends JFrame {
     private JTextField agentAbsoluteRateField;       // 绝对分成率字段
 
     // 显示模式单选按钮组
-    private JRadioButton simpleModeRadioBtn;         // 简洁模式
+    private JRadioButton conciseModeRadioBtn;         // 简洁模式
     private JRadioButton detailedModeRadioBtn;       // 详细模式
     private ButtonGroup modeGroup;
 
@@ -58,9 +58,9 @@ public class ExportAgentInvoiceCalculator extends JFrame {
     // 显示模式控制
     private JPanel purchaseAmountPanel;              // 采购金额面板
     private JTextArea detailedResultArea;            // 详细结果显示区域
-    private JTextField simpleResultInvoiceAmountField;            // 简洁结果开票金额显示字段
+    private JTextField conciseResultInvoiceAmountField;            // 简洁结果开票金额显示字段
     private JPanel detailedResultPanel;              // 详细结果面板
-    private JPanel simpleResultPanel;                // 简洁结果面板
+    private JPanel conciseResultPanel;                // 简洁结果面板
 
     // 计算按钮
     private JButton calculateButton;
@@ -132,17 +132,17 @@ public class ExportAgentInvoiceCalculator extends JFrame {
         panel.setBorder(new TitledBorder("显示模式"));
 
         // 创建模式选择单选按钮组
-        simpleModeRadioBtn = new JRadioButton("简洁模式（仅计算开票金额）", true);
+        conciseModeRadioBtn = new JRadioButton("简洁模式（仅计算开票金额）", true);
         detailedModeRadioBtn = new JRadioButton("详细模式（显示完整计算过程和盈利分析）", false);
         modeGroup = new ButtonGroup();
-        modeGroup.add(simpleModeRadioBtn);
+        modeGroup.add(conciseModeRadioBtn);
         modeGroup.add(detailedModeRadioBtn);
 
         // 添加事件监听器
-        simpleModeRadioBtn.addActionListener(_ -> toggleDisplayMode());
+        conciseModeRadioBtn.addActionListener(_ -> toggleDisplayMode());
         detailedModeRadioBtn.addActionListener(_ -> toggleDisplayMode());
 
-        panel.add(simpleModeRadioBtn);
+        panel.add(conciseModeRadioBtn);
         panel.add(detailedModeRadioBtn);
 
         return panel;
@@ -335,30 +335,30 @@ public class ExportAgentInvoiceCalculator extends JFrame {
         detailedResultPanel.add(scrollPane, BorderLayout.CENTER);
 
         // 简洁结果面板
-        simpleResultPanel = new JPanel(new GridBagLayout());
-        simpleResultPanel.setBorder(new TitledBorder("开票金额"));
+        conciseResultPanel = new JPanel(new GridBagLayout());
+        conciseResultPanel.setBorder(new TitledBorder("开票金额"));
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.insets = new Insets(10, 10, 10, 10);
         gbc.anchor = GridBagConstraints.CENTER;
 
         gbc.gridx = 0; gbc.gridy = 0;
-        simpleResultPanel.add(new JLabel("应开票金额 (人民币):"), gbc);
+        conciseResultPanel.add(new JLabel("应开票金额 (人民币):"), gbc);
 
         gbc.gridx = 1; gbc.gridy = 0; gbc.fill = GridBagConstraints.HORIZONTAL; gbc.weightx = 1.0;
-        simpleResultInvoiceAmountField = new JTextField(15);
-        simpleResultInvoiceAmountField.setEditable(false);
-        simpleResultInvoiceAmountField.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 16));
-        simpleResultInvoiceAmountField.setHorizontalAlignment(JTextField.CENTER);
-        simpleResultInvoiceAmountField.setBackground(new Color(240, 255, 240));
-        simpleResultPanel.add(simpleResultInvoiceAmountField, gbc);
+        conciseResultInvoiceAmountField = new JTextField(15);
+        conciseResultInvoiceAmountField.setEditable(false);
+        conciseResultInvoiceAmountField.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 16));
+        conciseResultInvoiceAmountField.setHorizontalAlignment(JTextField.CENTER);
+        conciseResultInvoiceAmountField.setBackground(new Color(240, 255, 240));
+        conciseResultPanel.add(conciseResultInvoiceAmountField, gbc);
 
         gbc.gridx = 2; gbc.gridy = 0; gbc.fill = GridBagConstraints.NONE; gbc.weightx = 0.0;
         JLabel unitLabel = new JLabel("元");
         unitLabel.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 14));
-        simpleResultPanel.add(unitLabel, gbc);
+        conciseResultPanel.add(unitLabel, gbc);
 
         panel.add(detailedResultPanel, DETAILED_RESULT_PANEL_KEY);
-        panel.add(simpleResultPanel, SIMPLE_RESULT_PANEL_KEY);
+        panel.add(conciseResultPanel, CONCISE_RESULT_PANEL_KEY);
 
         return panel;
     }
@@ -380,13 +380,13 @@ public class ExportAgentInvoiceCalculator extends JFrame {
             cardLayout.show(detailedResultPanel.getParent(), DETAILED_RESULT_PANEL_KEY);
             formatAmountField( purchaseAmountField );
         } else {
-            cardLayout.show(detailedResultPanel.getParent(), SIMPLE_RESULT_PANEL_KEY);
+            cardLayout.show(detailedResultPanel.getParent(), CONCISE_RESULT_PANEL_KEY);
         }
         formatAmountField( salesAmountField );
 
         // 清空结果
         detailedResultArea.setText("");
-        simpleResultInvoiceAmountField.setText("");
+        conciseResultInvoiceAmountField.setText("");
 
         // 重新布局
         revalidate();
@@ -411,7 +411,7 @@ public class ExportAgentInvoiceCalculator extends JFrame {
         agentRelativeRatioField.setText("");
         agentAbsoluteRateField.setText("");
         detailedResultArea.setText("");
-        simpleResultInvoiceAmountField.setText("");
+        conciseResultInvoiceAmountField.setText("");
         relativeRatioRadioBtn.setSelected(true);
         currencyComboBox.setSelectedIndex(0);
 
@@ -590,7 +590,7 @@ public class ExportAgentInvoiceCalculator extends JFrame {
     }
 
     private void displaySimpleResult ( BigDecimal invoiceAmountInRMB ) {
-        simpleResultInvoiceAmountField.setText( currencyFormat.format( invoiceAmountInRMB ) );
+        conciseResultInvoiceAmountField.setText( currencyFormat.format( invoiceAmountInRMB ) );
     }
 
     private void displayDetailedResults (
