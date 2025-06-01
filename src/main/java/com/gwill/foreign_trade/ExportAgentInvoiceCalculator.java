@@ -464,7 +464,7 @@ public class ExportAgentInvoiceCalculator extends JFrame {
             }
         } else {
             // 绝对分配率
-            agentRatio = convertAbsoluteRateToRelativeRatio(salesAmount, exchangeRate, taxRefundRate, agentRateInput);
+            agentRatio = convertAbsoluteRateToRelativeRatio( taxRefundRate, agentRateInput );
         }
 
         // 验证分母不为零
@@ -556,14 +556,11 @@ public class ExportAgentInvoiceCalculator extends JFrame {
 
     /**
      * 将用户手工输入的分配给代理公司的绝对退税率换算成退税金额中分配给代理公司的相对分配率（百分比）。
-     * @param salesAmount 与海外客户签订的PI中的外汇金额
-     * @param exchangeRate 汇率
      * @param taxRefundRate 该款产品的海关退税率
      * @param agentRateInput 用户手工输入的分配给代理公司的绝对退税率
      * @return 退税金额中分配给代理公司的相对分配率（百分比）
      */
-    private BigDecimal convertAbsoluteRateToRelativeRatio (
-            BigDecimal salesAmount, BigDecimal exchangeRate, BigDecimal taxRefundRate, BigDecimal agentRateInput ) {
+    private BigDecimal convertAbsoluteRateToRelativeRatio (BigDecimal taxRefundRate, BigDecimal agentRateInput ) {
         BigDecimal agentRate = agentRateInput.divide( BigDecimal.valueOf( 100 ), CALCULATION_PRECISION, ROUNDING_MODE );
         if ( agentRate.compareTo( BigDecimal.ZERO ) < 0 || agentRate.compareTo( taxRefundRate ) > 0 ) {
             String errorMsg = String.format( "代理分成绝对退税率必须在0-%.2f%%之间",
