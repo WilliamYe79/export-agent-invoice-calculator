@@ -46,7 +46,7 @@ public class ExportAgentInvoiceCalculator extends JFrame {
     private JTextField agentAbsoluteRateField;       // 绝对分成率字段
 
     // 显示模式单选按钮组
-    private JRadioButton simpleModeRadioBtn;         // 简单模式
+    private JRadioButton simpleModeRadioBtn;         // 简洁模式
     private JRadioButton detailedModeRadioBtn;       // 详细模式
     private ButtonGroup modeGroup;
 
@@ -58,9 +58,9 @@ public class ExportAgentInvoiceCalculator extends JFrame {
     // 显示模式控制
     private JPanel purchaseAmountPanel;              // 采购金额面板
     private JTextArea detailedResultArea;            // 详细结果显示区域
-    private JTextField simpleResultInvoiceAmountField;            // 简单结果开票金额显示字段
+    private JTextField simpleResultInvoiceAmountField;            // 简洁结果开票金额显示字段
     private JPanel detailedResultPanel;              // 详细结果面板
-    private JPanel simpleResultPanel;                // 简单结果面板
+    private JPanel simpleResultPanel;                // 简洁结果面板
 
     // 计算按钮
     private JButton calculateButton;
@@ -132,7 +132,7 @@ public class ExportAgentInvoiceCalculator extends JFrame {
         panel.setBorder(new TitledBorder("显示模式"));
 
         // 创建模式选择单选按钮组
-        simpleModeRadioBtn = new JRadioButton("简单模式（仅计算开票金额）", true);
+        simpleModeRadioBtn = new JRadioButton("简洁模式（仅计算开票金额）", true);
         detailedModeRadioBtn = new JRadioButton("详细模式（显示完整计算过程和盈利分析）", false);
         modeGroup = new ButtonGroup();
         modeGroup.add(simpleModeRadioBtn);
@@ -334,7 +334,7 @@ public class ExportAgentInvoiceCalculator extends JFrame {
 
         detailedResultPanel.add(scrollPane, BorderLayout.CENTER);
 
-        // 简单结果面板
+        // 简洁结果面板
         simpleResultPanel = new JPanel(new GridBagLayout());
         simpleResultPanel.setBorder(new TitledBorder("开票金额"));
         GridBagConstraints gbc = new GridBagConstraints();
