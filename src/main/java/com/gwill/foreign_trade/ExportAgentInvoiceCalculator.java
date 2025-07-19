@@ -15,8 +15,9 @@ import java.text.DecimalFormat;
  * 外贸代理开票金额计算器
  * 基于JDK 22开发的Swing GUI应用程序
  *
- * 计算公式: invoiceAmount = (salesAmount × exchangeRate) ÷ [1 - taxRefundRate × (1 - agentRatio)]
- * 简写为：X = (S × E) ÷ [1 - R × (1 - A)]
+ * 计算公式: invoiceAmount = (salesAmount × exchangeRate) × (1 + taxRefundRate) ÷ (1 + taxRefundRate × agentRatio)
+ * 简写为：X = (S × E) × (1+R) ÷ (1 + R × A)
+ * 退税公式: T = X × R/(1+R)
  * 其中: S=销售金额(美元), E=汇率, R=退税率, A=代理分成比例, X=开票金额
  */
 public class ExportAgentInvoiceCalculator extends JFrame {
@@ -468,19 +469,26 @@ public class ExportAgentInvoiceCalculator extends JFrame {
         }
 
         // 验证分母不为零
-        BigDecimal denominator = BigDecimal.ONE.subtract(
-                taxRefundRate.multiply(BigDecimal.ONE.subtract(agentRatio))
-        );
+//        BigDecimal denominator = BigDecimal.ONE.subtract(
+//                taxRefundRate.multiply(BigDecimal.ONE.subtract(agentRatio))
+//        );
+        BigDecimal denominator = BigDecimal.ONE.add( taxRefundRate.multiply( agentRatio ) );
         if (denominator.compareTo(BigDecimal.ZERO) == 0) {
             throw new IllegalArgumentException("参数组合导致计算公式分母为0，计算无解！请调整代理分成比例，重新计算。");
         }
 
-        // 计算开票金额: invoiceAmountInRMB = (salesAmount × exchangeRate) ÷ [1 - taxRefundRate × (1 - agentRatio)]
+//        // 计算开票金额: invoiceAmountInRMB = (salesAmount × exchangeRate) ÷ [1 - taxRefundRate × (1 - agentRatio)]
+//        BigDecimal clientPaymentInRMB = salesAmount.multiply(exchangeRate);
+//        BigDecimal invoiceAmountInRMB = clientPaymentInRMB.divide(denominator, CALCULATION_PRECISION, ROUNDING_MODE);
+        // 计算开票金额: invoiceAmountInRMB = (salesAmount × exchangeRate) × (1+taxRefundRate) ÷ (1 + taxRefundRate × agentRatio)
         BigDecimal clientPaymentInRMB = salesAmount.multiply(exchangeRate);
-        BigDecimal invoiceAmountInRMB = clientPaymentInRMB.divide(denominator, CALCULATION_PRECISION, ROUNDING_MODE);
+        BigDecimal numerator = clientPaymentInRMB.multiply(BigDecimal.ONE.add(taxRefundRate));
+        BigDecimal invoiceAmountInRMB = numerator.divide( denominator, CALCULATION_PRECISION, ROUNDING_MODE );
 
         // 计算相关数值
-        BigDecimal taxRefundAmountInRMB = invoiceAmountInRMB.multiply(taxRefundRate);
+//        BigDecimal taxRefundAmountInRMB = invoiceAmountInRMB.multiply(taxRefundRate);
+        BigDecimal taxRefundAmountInRMB = invoiceAmountInRMB.multiply(taxRefundRate)
+                .divide( BigDecimal.ONE.add( taxRefundRate ), CALCULATION_PRECISION, ROUNDING_MODE );
         BigDecimal agentProfitInRMB = taxRefundAmountInRMB.multiply(agentRatio);
         // 显示结果
         if (detailedModeRadioBtn.isSelected()) {
