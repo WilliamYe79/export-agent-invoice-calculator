@@ -17,8 +17,18 @@
         <maven.compiler.source>22</maven.compiler.source>
         <maven.compiler.target>22</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <main.class>com.gwill.foreign_trade.ExportAgentInvoiceCalculator</main.class>
+        <lombok.version>1.18.38</lombok.version>
+        <main.class>com.gwill.foreign_trade.SingleSupplierInvoiceCalculator</main.class>
     </properties>
+
+    <dependencies>
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <version>${lombok.version}</version>
+            <scope>provided</scope>
+        </dependency>
+    </dependencies>
 
     <build>
         <finalName>${project.artifactId}-${project.version}</finalName>
@@ -84,6 +94,16 @@
                                         <exclude>META-INF/*.SF</exclude>
                                         <exclude>META-INF/*.DSA</exclude>
                                         <exclude>META-INF/*.RSA</exclude>
+                                        <exclude>META-INF/MANIFEST.MF</exclude>
+                                        <exclude>module-info.class</exclude>
+                                        <exclude>META-INF/versions/*/module-info.class</exclude>
+                                    </excludes>
+                                </filter>
+                                <!-- 完全排除Lombok -->
+                                <filter>
+                                    <artifact>org.projectlombok:lombok</artifact>
+                                    <excludes>
+                                        <exclude>**/*</exclude>
                                     </excludes>
                                 </filter>
                             </filters>

@@ -15,12 +15,15 @@ import java.text.DecimalFormat;
  * 外贸代理开票金额计算器
  * 基于JDK 22开发的Swing GUI应用程序
  *
- * 计算公式: invoiceAmount = (salesAmount × exchangeRate) × (1 + taxRefundRate) ÷ (1 + taxRefundRate × agentRatio)
+ * 计算公式: invoiceAmount = (salesAmount × exchangeRate) × (1 + taxRebateRate) ÷ (1 + taxRebateRate × agentRatio)
  * 简写为：X = (S × E) × (1+R) ÷ (1 + R × A)
  * 退税公式: T = X × R/(1+R)
  * 其中: S=销售金额(美元), E=汇率, R=退税率, A=代理分成比例, X=开票金额
  */
-public class ExportAgentInvoiceCalculator extends JFrame {
+public class SingleSupplierInvoiceCalculator extends JFrame {
+
+    // 单例实例
+    private static SingleSupplierInvoiceCalculator instance;
 
     // 精度设置
     private static final int CALCULATION_PRECISION = 10;
@@ -42,7 +45,7 @@ public class ExportAgentInvoiceCalculator extends JFrame {
     private JTextField salesAmountField;     // 销售金额
     private JComboBox<String> currencyComboBox;     // 货币选项
     private JTextField exchangeRateField;    // 汇率
-    private JTextField taxRefundRateField;   // 退税率
+    private JTextField taxRebateRateField;   // 退税率
     private JTextField agentRelativeRatioField;      // 相对分成率字段
     private JTextField agentAbsoluteRateField;       // 绝对分成率字段
 
@@ -66,14 +69,25 @@ public class ExportAgentInvoiceCalculator extends JFrame {
     // 计算按钮
     private JButton calculateButton;
     private JButton clearButton;
+    private JButton multiFactoryButton;
 
     // 数字格式化器
     private DecimalFormat currencyFormat = new DecimalFormat("#,##0.00");
     private DecimalFormat percentFormat = new DecimalFormat("0.00%");
     private DecimalFormat exchangeRateFormat = new DecimalFormat("#,##0.0000");
 
-    public ExportAgentInvoiceCalculator () throws HeadlessException {
+    private SingleSupplierInvoiceCalculator () throws HeadlessException {
         initializeGUI();
+    }
+    
+    /**
+     * 获取单例实例
+     */
+    public static synchronized SingleSupplierInvoiceCalculator getInstance() {
+        if (instance == null) {
+            instance = new SingleSupplierInvoiceCalculator();
+        }
+        return instance;
     }
 
     private void initializeGUI () {
@@ -199,9 +213,9 @@ public class ExportAgentInvoiceCalculator extends JFrame {
         gbc.gridx = 0; gbc.gridy = 3;
         panel.add(new JLabel("退税率:"), gbc);
         gbc.gridx = 1; gbc.fill = GridBagConstraints.HORIZONTAL; gbc.weightx = 1.0;
-        taxRefundRateField = new JTextField(15);
-        taxRefundRateField.setHorizontalAlignment( JTextField.RIGHT );
-        panel.add(taxRefundRateField, gbc);
+        taxRebateRateField = new JTextField(15);
+        taxRebateRateField.setHorizontalAlignment( JTextField.RIGHT );
+        panel.add(taxRebateRateField, gbc);
         gbc.gridx = 2; gbc.fill = GridBagConstraints.NONE; gbc.weightx = 0.0;
         panel.add(new JLabel("%"), gbc);
 
@@ -311,8 +325,13 @@ public class ExportAgentInvoiceCalculator extends JFrame {
         clearButton.setPreferredSize(new Dimension(120, 30));
         clearButton.addActionListener(_ -> clearAllFields());
 
+        multiFactoryButton = new JButton("多工厂分配计算");
+        multiFactoryButton.setPreferredSize(new Dimension(140, 30));
+        multiFactoryButton.addActionListener( e -> switchToMultiFactoryCalculator() );
+
         panel.add(calculateButton);
         panel.add(clearButton);
+        panel.add(multiFactoryButton);
 
         return panel;
     }
@@ -398,7 +417,7 @@ public class ExportAgentInvoiceCalculator extends JFrame {
         purchaseAmountField.setText("1000000");
         salesAmountField.setText("170000");
         exchangeRateField.setText("7.1000");
-        taxRefundRateField.setText("13");
+        taxRebateRateField.setText("13");
         agentRelativeRatioField.setText("50");
         agentAbsoluteRateField.setText("6.5");
         currencyComboBox.setSelectedIndex(0); // USD
@@ -408,7 +427,7 @@ public class ExportAgentInvoiceCalculator extends JFrame {
         purchaseAmountField.setText("");
         salesAmountField.setText("");
         exchangeRateField.setText("");
-        taxRefundRateField.setText("");
+        taxRebateRateField.setText("");
         agentRelativeRatioField.setText("");
         agentAbsoluteRateField.setText("");
         detailedResultArea.setText("");
@@ -426,7 +445,7 @@ public class ExportAgentInvoiceCalculator extends JFrame {
             try {
                 calculateInvoiceAmount();
             } catch (Exception ex) {
-                JOptionPane.showMessageDialog(ExportAgentInvoiceCalculator.this,
+                JOptionPane.showMessageDialog( SingleSupplierInvoiceCalculator.this,
                         "计算出错: " + ex.getMessage(),
                         "错误",
                         JOptionPane.ERROR_MESSAGE);
@@ -441,7 +460,7 @@ public class ExportAgentInvoiceCalculator extends JFrame {
                 null;
         BigDecimal salesAmount = parseBigDecimal(salesAmountField.getText(), "销售金额");
         BigDecimal exchangeRate = parseBigDecimal(exchangeRateField.getText(), "汇率");
-        BigDecimal taxRefundRate = parseBigDecimal(taxRefundRateField.getText(), "退税率")
+        BigDecimal taxRebateRate = parseBigDecimal(taxRebateRateField.getText(), "退税率")
                 .divide(BigDecimal.valueOf(100), CALCULATION_PRECISION, ROUNDING_MODE);
 
         // 根据选择的分成方式获取对应的输入值
@@ -453,7 +472,7 @@ public class ExportAgentInvoiceCalculator extends JFrame {
         }
 
         // 验证输入
-        validateInputs(purchaseAmountInRMB, salesAmount, exchangeRate, taxRefundRate, agentRateInput);
+        validateInputs(purchaseAmountInRMB, salesAmount, exchangeRate, taxRebateRate, agentRateInput);
 
         // 计算代理分成比例
         BigDecimal agentRatio;
@@ -465,40 +484,40 @@ public class ExportAgentInvoiceCalculator extends JFrame {
             }
         } else {
             // 绝对分配率
-            agentRatio = convertAbsoluteRateToRelativeRatio( taxRefundRate, agentRateInput );
+            agentRatio = convertAbsoluteRateToRelativeRatio( taxRebateRate, agentRateInput );
         }
 
         // 验证分母不为零
 //        BigDecimal denominator = BigDecimal.ONE.subtract(
-//                taxRefundRate.multiply(BigDecimal.ONE.subtract(agentRatio))
+//                taxRebateRate.multiply(BigDecimal.ONE.subtract(agentRatio))
 //        );
-        BigDecimal denominator = BigDecimal.ONE.add( taxRefundRate.multiply( agentRatio ) );
+        BigDecimal denominator = BigDecimal.ONE.add( taxRebateRate.multiply( agentRatio ) );
         if (denominator.compareTo(BigDecimal.ZERO) == 0) {
             throw new IllegalArgumentException("参数组合导致计算公式分母为0，计算无解！请调整代理分成比例，重新计算。");
         }
 
-//        // 计算开票金额: invoiceAmountInRMB = (salesAmount × exchangeRate) ÷ [1 - taxRefundRate × (1 - agentRatio)]
+//        // 计算开票金额: invoiceAmountInRMB = (salesAmount × exchangeRate) ÷ [1 - taxRebateRate × (1 - agentRatio)]
 //        BigDecimal clientPaymentInRMB = salesAmount.multiply(exchangeRate);
 //        BigDecimal invoiceAmountInRMB = clientPaymentInRMB.divide(denominator, CALCULATION_PRECISION, ROUNDING_MODE);
-        // 计算开票金额: invoiceAmountInRMB = (salesAmount × exchangeRate) × (1+taxRefundRate) ÷ (1 + taxRefundRate × agentRatio)
+        // 计算开票金额: invoiceAmountInRMB = (salesAmount × exchangeRate) × (1+taxRebateRate) ÷ (1 + taxRebateRate × agentRatio)
         BigDecimal clientPaymentInRMB = salesAmount.multiply(exchangeRate);
-        BigDecimal numerator = clientPaymentInRMB.multiply(BigDecimal.ONE.add(taxRefundRate));
+        BigDecimal numerator = clientPaymentInRMB.multiply( BigDecimal.ONE.add( taxRebateRate ) );
         BigDecimal invoiceAmountInRMB = numerator.divide( denominator, CALCULATION_PRECISION, ROUNDING_MODE );
 
         // 计算相关数值
-//        BigDecimal taxRefundAmountInRMB = invoiceAmountInRMB.multiply(taxRefundRate);
-        BigDecimal taxRefundAmountInRMB = invoiceAmountInRMB.multiply(taxRefundRate)
-                .divide( BigDecimal.ONE.add( taxRefundRate ), CALCULATION_PRECISION, ROUNDING_MODE );
-        BigDecimal agentProfitInRMB = taxRefundAmountInRMB.multiply(agentRatio);
+//        BigDecimal taxRebateAmountInRMB = invoiceAmountInRMB.multiply(taxRebateRate);
+        BigDecimal taxRebateAmountInRMB = invoiceAmountInRMB.multiply( taxRebateRate )
+                .divide( BigDecimal.ONE.add( taxRebateRate ), CALCULATION_PRECISION, ROUNDING_MODE );
+        BigDecimal agentProfitInRMB = taxRebateAmountInRMB.multiply(agentRatio);
         // 显示结果
         if (detailedModeRadioBtn.isSelected()) {
-            BigDecimal yourTotalIncomeInRMB = calculateYourTotalIncome( salesAmount, exchangeRate, taxRefundAmountInRMB, agentProfitInRMB );
+            BigDecimal yourTotalIncomeInRMB = calculateYourTotalIncome( salesAmount, exchangeRate, taxRebateAmountInRMB, agentProfitInRMB );
             BigDecimal yourNetProfitInRMB = calculateYourNetProfit( purchaseAmountInRMB, salesAmount, exchangeRate,
-                    taxRefundAmountInRMB, agentProfitInRMB );
+                    taxRebateAmountInRMB, agentProfitInRMB );
             BigDecimal yourGrossMarkup = yourNetProfitInRMB.divide( purchaseAmountInRMB, CALCULATION_PRECISION, ROUNDING_MODE )
                     .multiply( BigDecimal.valueOf(100) );
-            displayDetailedResults(purchaseAmountInRMB, salesAmount, exchangeRate, taxRefundRate, agentRatio,
-                    agentRateInput, invoiceAmountInRMB, taxRefundAmountInRMB, agentProfitInRMB,
+            displayDetailedResults(purchaseAmountInRMB, salesAmount, exchangeRate, taxRebateRate, agentRatio,
+                    agentRateInput, invoiceAmountInRMB, taxRebateAmountInRMB, agentProfitInRMB,
                     clientPaymentInRMB, yourTotalIncomeInRMB, yourNetProfitInRMB, yourGrossMarkup);
         } else {
             displaySimpleResult(invoiceAmountInRMB);
@@ -509,15 +528,15 @@ public class ExportAgentInvoiceCalculator extends JFrame {
      * 计算以人民币为货币单位的你（委托方）的总收款额。
      * @param salesAmount 以外币为货币单位的PI上的销售额
      * @param exchangeRate 汇率
-     * @param taxRefundAmountInRMB 以人民币为货币单位的退税额
+     * @param taxRebateAmountInRMB 以人民币为货币单位的退税额
      * @param agentProfitInRMB 以人民币为货币单位的须分给代理公司的退税额
      * @return 以人民币为货币单位的你（委托方）的总收款额
      */
     private BigDecimal calculateYourTotalIncome (
-            BigDecimal salesAmount, BigDecimal exchangeRate, BigDecimal taxRefundAmountInRMB,
+            BigDecimal salesAmount, BigDecimal exchangeRate, BigDecimal taxRebateAmountInRMB,
             BigDecimal agentProfitInRMB ) {
         BigDecimal salesAmountInRMB = salesAmount.multiply( exchangeRate );
-        BigDecimal yourTotalIncomeInRMB = salesAmountInRMB.add( taxRefundAmountInRMB );
+        BigDecimal yourTotalIncomeInRMB = salesAmountInRMB.add( taxRebateAmountInRMB );
         yourTotalIncomeInRMB = yourTotalIncomeInRMB.subtract( agentProfitInRMB );
 
         return yourTotalIncomeInRMB;
@@ -528,16 +547,16 @@ public class ExportAgentInvoiceCalculator extends JFrame {
      * @param purchaseAmountInRMB 以人民币为货币单位的采购成本
      * @param salesAmount 以外币为货币单位的PI上的销售额
      * @param exchangeRate 汇率
-     * @param taxRefundAmountInRMB 以人民币为货币单位的退税额
+     * @param taxRebateAmountInRMB 以人民币为货币单位的退税额
      * @param agentProfitInRMB 以人民币为货币单位的须分给代理公司的退税额
      * @return 以人民币为货币单位的你（委托方）的总利润额
      */
     private BigDecimal calculateYourNetProfit (
             BigDecimal purchaseAmountInRMB, BigDecimal salesAmount, BigDecimal exchangeRate,
-            BigDecimal taxRefundAmountInRMB, BigDecimal agentProfitInRMB ) {
+            BigDecimal taxRebateAmountInRMB, BigDecimal agentProfitInRMB ) {
         BigDecimal salesAmountInRMB = salesAmount.multiply( exchangeRate );
         BigDecimal yourNetProfitInRMB = salesAmountInRMB.subtract( purchaseAmountInRMB );
-        yourNetProfitInRMB = yourNetProfitInRMB.add( taxRefundAmountInRMB );
+        yourNetProfitInRMB = yourNetProfitInRMB.add( taxRebateAmountInRMB );
         yourNetProfitInRMB = yourNetProfitInRMB.subtract( agentProfitInRMB );
 
         return yourNetProfitInRMB;
@@ -545,7 +564,7 @@ public class ExportAgentInvoiceCalculator extends JFrame {
 
     private void validateInputs (
             BigDecimal purchaseAmount, BigDecimal salesAmount, BigDecimal exchangeRate,
-            BigDecimal taxRefundRate, BigDecimal agentRateInput ) {
+            BigDecimal taxRebateRate, BigDecimal agentRateInput ) {
         if ( detailedModeRadioBtn.isSelected() ) {
             if ( purchaseAmount == null || purchaseAmount.compareTo( BigDecimal.ZERO ) <= 0 ) {
                 throw new IllegalArgumentException("采购金额必须大于0");
@@ -556,7 +575,7 @@ public class ExportAgentInvoiceCalculator extends JFrame {
             throw new IllegalArgumentException("销售金额必须大于0");
         if (exchangeRate.compareTo(BigDecimal.ZERO) <= 0)
             throw new IllegalArgumentException("汇率必须大于0");
-        if (taxRefundRate.compareTo(BigDecimal.ZERO) <= 0 || taxRefundRate.compareTo(BigDecimal.ONE) >= 0)
+        if (taxRebateRate.compareTo(BigDecimal.ZERO) <= 0 || taxRebateRate.compareTo(BigDecimal.ONE) >= 0)
             throw new IllegalArgumentException("退税率必须在0-100%之间");
         if (agentRateInput.compareTo(BigDecimal.ZERO) < 0 || agentRateInput.compareTo(BigDecimal.valueOf(100)) > 0)
             throw new IllegalArgumentException("代理分成率必须在0-100%之间");
@@ -564,18 +583,18 @@ public class ExportAgentInvoiceCalculator extends JFrame {
 
     /**
      * 将用户手工输入的分配给代理公司的绝对退税率换算成退税金额中分配给代理公司的相对分配率（百分比）。
-     * @param taxRefundRate 该款产品的海关退税率
+     * @param taxRebateRate 该款产品的海关退税率
      * @param agentRateInput 用户手工输入的分配给代理公司的绝对退税率
      * @return 退税金额中分配给代理公司的相对分配率（百分比）
      */
-    private BigDecimal convertAbsoluteRateToRelativeRatio (BigDecimal taxRefundRate, BigDecimal agentRateInput ) {
+    private BigDecimal convertAbsoluteRateToRelativeRatio ( BigDecimal taxRebateRate, BigDecimal agentRateInput ) {
         BigDecimal agentRate = agentRateInput.divide( BigDecimal.valueOf( 100 ), CALCULATION_PRECISION, ROUNDING_MODE );
-        if ( agentRate.compareTo( BigDecimal.ZERO ) < 0 || agentRate.compareTo( taxRefundRate ) > 0 ) {
+        if ( agentRate.compareTo( BigDecimal.ZERO ) < 0 || agentRate.compareTo( taxRebateRate ) > 0 ) {
             String errorMsg = String.format( "代理分成绝对退税率必须在0-%.2f%%之间",
-                    taxRefundRate.multiply( BigDecimal.valueOf( 100 ) ).doubleValue() );
+                    taxRebateRate.multiply( BigDecimal.valueOf( 100 ) ).doubleValue() );
             throw new IllegalArgumentException( errorMsg );
         }
-        BigDecimal relativeAgentRatio = agentRate.divide( taxRefundRate, CALCULATION_PRECISION, ROUNDING_MODE );
+        BigDecimal relativeAgentRatio = agentRate.divide( taxRebateRate, CALCULATION_PRECISION, ROUNDING_MODE );
         return relativeAgentRatio;
     }
 
@@ -600,8 +619,8 @@ public class ExportAgentInvoiceCalculator extends JFrame {
 
     private void displayDetailedResults (
             BigDecimal purchaseAmountInRMB, BigDecimal salesAmount, BigDecimal exchangeRate,
-            BigDecimal taxRefundRate, BigDecimal agentRatio, BigDecimal agentRateInput,
-            BigDecimal invoiceAmountInRMB, BigDecimal taxRefundAmountInRMB, BigDecimal agentProfitInRMB,
+            BigDecimal taxRebateRate, BigDecimal agentRatio, BigDecimal agentRateInput,
+            BigDecimal invoiceAmountInRMB, BigDecimal taxRebateAmountInRMB, BigDecimal agentProfitInRMB,
             BigDecimal clientPaymentInRMB, BigDecimal yourTotalIncomeInRMB, BigDecimal yourNetProfitInRMB,
             BigDecimal yourGrossMarkup ) {
         StringBuilder sb = new StringBuilder();
@@ -613,7 +632,7 @@ public class ExportAgentInvoiceCalculator extends JFrame {
         sb.append(String.format("销售金额: %s %s\n", currencyFormat.format(salesAmount),
                 CURRENCIES[currencyComboBox.getSelectedIndex()]));
         sb.append(String.format("当前汇率: %s\n", exchangeRateFormat.format(exchangeRate)));
-        sb.append(String.format("退税率: %s\n", percentFormat.format(taxRefundRate)));
+        sb.append(String.format("退税率: %s\n", percentFormat.format(taxRebateRate)));
 
         if ( relativeRatioRadioBtn.isSelected()) {
             sb.append(String.format("代理退税分成方式: 相对分配率 %.2f%%\n", agentRateInput.doubleValue()));
@@ -628,9 +647,9 @@ public class ExportAgentInvoiceCalculator extends JFrame {
         sb.append(String.format("开票溢价: %s 元\n", currencyFormat.format(invoiceAmountInRMB.subtract(purchaseAmountInRMB))));
 
         sb.append("\n【退税相关】\n");
-        sb.append(String.format("退税总金额: %s 元\n", currencyFormat.format(taxRefundAmountInRMB)));
+        sb.append(String.format("退税总金额: %s 元\n", currencyFormat.format(taxRebateAmountInRMB)));
         sb.append(String.format("代理公司利润: %s 元\n", currencyFormat.format(agentProfitInRMB)));
-        sb.append(String.format("您分享的退税: %s 元\n", currencyFormat.format(taxRefundAmountInRMB.subtract(agentProfitInRMB))));
+        sb.append(String.format("您分享的退税: %s 元\n", currencyFormat.format(taxRebateAmountInRMB.subtract(agentProfitInRMB))));
 
         sb.append("\n【盈利分析】\n");
         sb.append(String.format("您的总收入: %s 元\n", currencyFormat.format(yourTotalIncomeInRMB)));
@@ -638,12 +657,12 @@ public class ExportAgentInvoiceCalculator extends JFrame {
         sb.append(String.format("您的毛成本利润率: %.2f%%\n", yourGrossMarkup.doubleValue()));
 
         sb.append("\n【资金流验证】\n");
-        BigDecimal agentIncome = clientPaymentInRMB.add(taxRefundAmountInRMB);
+        BigDecimal agentIncome = clientPaymentInRMB.add(taxRebateAmountInRMB);
         BigDecimal agentExpense = invoiceAmountInRMB;
         BigDecimal agentNetProfit = agentIncome.subtract(agentExpense);
 
         sb.append(String.format("代理公司收入: %s + %s = %s 元\n",
-                currencyFormat.format(clientPaymentInRMB), currencyFormat.format(taxRefundAmountInRMB),
+                currencyFormat.format(clientPaymentInRMB), currencyFormat.format(taxRebateAmountInRMB),
                 currencyFormat.format(agentIncome)));
         sb.append(String.format("代理公司支出: %s 元\n", currencyFormat.format(agentExpense)));
         sb.append(String.format("代理公司净利润: %s 元\n", currencyFormat.format(agentNetProfit)));
@@ -652,17 +671,30 @@ public class ExportAgentInvoiceCalculator extends JFrame {
         sb.append(agentNetProfit.subtract(agentProfitInRMB).abs().compareTo(BigDecimal.valueOf( 0.01 )) < 0 ? "✓" : "✗");
 
         sb.append("\n\n【计算公式】\n");
-        sb.append("invoiceAmountInRMB = (salesAmount × exchangeRate) ÷ [1 - taxRefundRate × (1 - agentRatio)]\n");
+        sb.append("invoiceAmountInRMB = (salesAmount × exchangeRate) ÷ [1 - taxRebateRate × (1 - agentRatio)]\n");
         sb.append(String.format("invoiceAmountInRMB = (%s × %s) ÷ [1 - %s × (1 - %s)]\n",
                 currencyFormat.format(salesAmount), exchangeRateFormat.format(exchangeRate),
-                percentFormat.format(taxRefundRate), percentFormat.format(agentRatio)));
+                percentFormat.format(taxRebateRate), percentFormat.format(agentRatio)));
         sb.append(String.format("invoiceAmountInRMB = %s ÷ %s = %s 元\n",
                 currencyFormat.format(clientPaymentInRMB),
-                currencyFormat.format(BigDecimal.ONE.subtract(taxRefundRate.multiply(BigDecimal.ONE.subtract(agentRatio)))),
+                currencyFormat.format(BigDecimal.ONE.subtract(taxRebateRate.multiply(BigDecimal.ONE.subtract(agentRatio)))),
                 currencyFormat.format(invoiceAmountInRMB)));
 
         detailedResultArea.setText(sb.toString());
         detailedResultArea.setCaretPosition(0);
+    }
+
+    /**
+     * 切换到多工厂分配计算器
+     */
+    private void switchToMultiFactoryCalculator () {
+        // 隐藏当前窗口
+        this.setVisible( false );
+        
+        // 显示多工厂计算器
+        SwingUtilities.invokeLater( () -> {
+            MultiFactoryInvoiceCalculator.getInstance().setVisible( true );
+        } );
     }
 
     public static void main ( String[] args ) {
@@ -676,7 +708,7 @@ public class ExportAgentInvoiceCalculator extends JFrame {
 
         // 启动GUI
         SwingUtilities.invokeLater( () -> {
-            new ExportAgentInvoiceCalculator().setVisible( true );
+            getInstance().setVisible( true );
         } );
     }
 }
