@@ -1,10 +1,12 @@
 package com.gwill.foreign_trade.model;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.Map;
 
 /**
  * 产品情况数据模型
- * 封装从CSV文件中读取的工厂和产品信息
+ * 封装从Excel文件中读取的工厂和产品信息
  */
 public record ProductSituation (
         String factoryName,                     // 工厂名称
@@ -17,6 +19,17 @@ public record ProductSituation (
         boolean agreeToInvoiceToAgent,          // 同意开票给代理公司
         boolean ableToInvoiceWithOverprice      // 可超额开票
 ) {
+    
+    // Excel输入数据表头常量
+    public static final String HEADER_FACTORY_NAME = "工厂名称";
+    public static final String HEADER_PRODUCT_NAME = "产品名称";
+    public static final String HEADER_TAX_REBATE_RATE = "退税率";
+    public static final String HEADER_SALES_AMOUNT_FOREIGN = "PI外币销售金额";
+    public static final String HEADER_ACTUAL_PURCHASE_AMOUNT = "实际货值";
+    public static final String HEADER_PREPAID_AMOUNT = "已预付金额";
+    public static final String HEADER_TAX_POINT = "税点";
+    public static final String HEADER_AGREE_TO_INVOICE_AGENT = "同意开票给代理公司";
+    public static final String HEADER_ABLE_TO_INVOICE_OVERPRICE = "可超额开票";
     
     /**
      * 从CSV行数据构造ProductSituation
@@ -62,6 +75,49 @@ public record ProductSituation (
             salesAmount, actualPurchaseAmount, prepaidAmount,
             taxPoint, agreeToInvoice, ableToOverprice
         );
+    }
+    
+    /**
+     * 从Excel行数据构造ProductSituation（使用类型安全的Map数据）
+     * Excel字段映射：工厂名称,产品名称,退税率,PI外币销售金额,实际货值,已预付金额,税点,同意开票给代理公司,可超额开票
+     */
+    public static ProductSituation fromExcelRow(Map<String, Object> excelRow) {
+        String factoryName = (String) excelRow.get(HEADER_FACTORY_NAME);
+        String productName = (String) excelRow.get(HEADER_PRODUCT_NAME);
+        
+        // 从Excel读取的数据已经被excel-io按照元数据进行了类型转换
+        BigDecimal taxRebateRate = (BigDecimal) excelRow.get(HEADER_TAX_REBATE_RATE);
+        BigDecimal salesAmount = (BigDecimal) excelRow.get(HEADER_SALES_AMOUNT_FOREIGN);
+        BigDecimal actualPurchaseAmount = (BigDecimal) excelRow.get(HEADER_ACTUAL_PURCHASE_AMOUNT);
+        BigDecimal prepaidAmount = (BigDecimal) excelRow.get(HEADER_PREPAID_AMOUNT);
+        BigDecimal taxPoint = (BigDecimal) excelRow.get(HEADER_TAX_POINT);
+        
+        // 处理布尔值字段
+        Object agreeToInvoiceObj = excelRow.get(HEADER_AGREE_TO_INVOICE_AGENT);
+        boolean agreeToInvoice = parseBoolean(agreeToInvoiceObj);
+        
+        Object ableToOverpriceObj = excelRow.get(HEADER_ABLE_TO_INVOICE_OVERPRICE);
+        boolean ableToOverprice = parseBoolean(ableToOverpriceObj);
+        
+        return new ProductSituation(
+            factoryName, productName, taxRebateRate,
+            salesAmount, actualPurchaseAmount, prepaidAmount,
+            taxPoint, agreeToInvoice, ableToOverprice
+        );
+    }
+    
+    /**
+     * 辅助方法：解析布尔值（支持中文"是/否"和英文"true/false"）
+     */
+    private static boolean parseBoolean(Object value) {
+        if (value instanceof Boolean) {
+            return (Boolean) value;
+        }
+        if (value instanceof String) {
+            String str = ((String) value).trim();
+            return "是".equals(str) || "true".equalsIgnoreCase(str);
+        }
+        return false;
     }
     
     /**

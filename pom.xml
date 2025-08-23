@@ -23,6 +23,11 @@
 
     <dependencies>
         <dependency>
+            <groupId>com.gwill.io.excel</groupId>
+            <artifactId>excel-io</artifactId>
+            <version>1.0.0</version>
+        </dependency>
+        <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
             <version>${lombok.version}</version>

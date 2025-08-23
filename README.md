@@ -644,8 +644,8 @@ SOFTWARE.
 ## 📞 联系方式
 
 - **项目维护者**：William YE of G-WILL Team
-- **技术支持**：[GitHub Issues](https://github.com/your-username/export-agent-invoice-calculator/issues)
-- **功能建议**：[GitHub Discussions](https://github.com/your-username/export-agent-invoice-calculator/discussions)
+- **技术支持**：[GitHub Issues](https://github.com/WilliamYe79/export-agent-invoice-calculator/issues)
+- **功能建议**：[GitHub Discussions](https://github.com/WilliamYe79/export-agent-invoice-calculator/discussions)
 
 ---
 

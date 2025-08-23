@@ -14,11 +14,16 @@ import javax.swing.table.DefaultTableModel;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
-import java.io.FileReader;
-import java.io.FileWriter;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.BufferedWriter;
+import java.io.FileWriter;
+import java.nio.charset.StandardCharsets;
+
+import com.gwill.io.excel.ExcelIO;
+import com.gwill.io.excel.ExcelIOException;
+import com.gwill.io.excel.AlternatingRowsWriter;
+import com.gwill.io.excel.util.ResourceUtil;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.text.DecimalFormat;
@@ -30,15 +35,19 @@ import static java.util.stream.Collectors.groupingBy;
 
 /**
  * 多工厂分配计算器
- * 支持从CSV文件读取工厂信息，计算各工厂开票金额和资金流转
+ * 支持从Excel文件读取工厂信息，计算各工厂开票金额和资金流转
  *
- * CSV文件格式：工厂名称,产品名称,实际货值,已预付金额,税点,同意开票给代理公司,可超额开票
+ * Excel文件格式：工厂名称,产品名称,退税率,PI外币销售金额,实际货值,已预付金额,税点,同意开票给代理公司,可超额开票
  */
 
 public class MultiFactoryInvoiceCalculator extends JFrame {
 
     // 单例实例
     private static MultiFactoryInvoiceCalculator instance;
+    
+    // 资源文件路径常量
+    private static final String INPUT_FILE_METADATA_RELATIVE_PATH = "data_types/multi_factory_situations_data_types.xlsx";
+    private static final String RESULT_TEMPLATE_FILE_RELATIVE_PATH = "formatted_templates/multi_factory_calculation_results_alternating_rows_template.xlsx";
     
     // 精度设置（使用服务类的常量）
     private static final int CALCULATION_PRECISION = MultiFactoryInvoiceCalculationService.CALCULATION_PRECISION;
@@ -58,7 +67,7 @@ public class MultiFactoryInvoiceCalculator extends JFrame {
     private JTextField agentRelativeRatioField;      // 相对分配率字段
 
     // 文件选择组件
-    private JTextField csvFilePathField;
+    private JTextField excelFilePathField;
     private JButton browseFileButton;
     private JButton loadDataButton;
 
@@ -221,16 +230,16 @@ public class MultiFactoryInvoiceCalculator extends JFrame {
 
         // 文件选择区域
         gbc.gridx = 0; gbc.gridy = 0; gbc.fill = GridBagConstraints.NONE;
-        panel.add(new JLabel("CSV文件:"), gbc);
+        panel.add(new JLabel("Excel文件:"), gbc);
 
         gbc.gridx = 1; gbc.gridy = 0; gbc.fill = GridBagConstraints.HORIZONTAL; gbc.weightx = 1.0;
-        csvFilePathField = new JTextField(50);  // 增加长度
-        csvFilePathField.setEditable(false);
-        panel.add(csvFilePathField, gbc);
+        excelFilePathField = new JTextField(50);  // 增加长度
+        excelFilePathField.setEditable(false);
+        panel.add(excelFilePathField, gbc);
 
         gbc.gridx = 2; gbc.gridy = 0; gbc.fill = GridBagConstraints.NONE; gbc.weightx = 0.0;
         browseFileButton = new JButton("选择文件");
-        browseFileButton.addActionListener(e -> browseCSVFile());
+        browseFileButton.addActionListener(e -> browseExcelFile());
         panel.add(browseFileButton, gbc);
 
         gbc.gridx = 3; gbc.gridy = 0;
@@ -313,19 +322,19 @@ public class MultiFactoryInvoiceCalculator extends JFrame {
         return panel;
     }
 
-    private void browseCSVFile() {
+    private void browseExcelFile() {
         JFileChooser fileChooser = new JFileChooser();
-        fileChooser.setFileFilter(new FileNameExtensionFilter("CSV文件 (*.csv)", "csv"));
+        fileChooser.setFileFilter(new FileNameExtensionFilter("Excel文件 (*.xlsx)", "xlsx"));
 
         if (fileChooser.showOpenDialog(this) == JFileChooser.APPROVE_OPTION) {
-            csvFilePathField.setText(fileChooser.getSelectedFile().getAbsolutePath());
+            excelFilePathField.setText(fileChooser.getSelectedFile().getAbsolutePath());
         }
     }
 
     private void loadFactoryData() {
-        String filePath = csvFilePathField.getText().trim();
+        String filePath = excelFilePathField.getText().trim();
         if (filePath.isEmpty()) {
-            JOptionPane.showMessageDialog(this, "请先选择CSV文件！", "提示", JOptionPane.WARNING_MESSAGE);
+            JOptionPane.showMessageDialog(this, "请先选择Excel文件！", "提示", JOptionPane.WARNING_MESSAGE);
             return;
         }
 
@@ -333,19 +342,23 @@ public class MultiFactoryInvoiceCalculator extends JFrame {
             productSituationList.clear();
             tableModel.setRowCount(0);
 
-            try ( BufferedReader reader = new BufferedReader(new FileReader(filePath))) {
-                String line;
-                int lineNumber = 0;
+            // 使用ResourceUtil读取元数据文件以获取数据类型
+            try (InputStream metadataStream = ResourceUtil.getInputStream(INPUT_FILE_METADATA_RELATIVE_PATH)) {
+                
+                if (metadataStream == null) {
+                    throw new ExcelIOException("找不到元数据文件: " + INPUT_FILE_METADATA_RELATIVE_PATH);
+                }
 
-                while ((line = reader.readLine()) != null) {
-                    lineNumber++;
-                    if (lineNumber == 1) continue; // 跳过标题行
+                // 使用ExcelIO读取Excel文件
+                var dataList = ExcelIO.read(filePath)
+                        .withMetadata(metadataStream)
+                        .sheet(0) // 使用第一个sheet
+                        .asMaps();
 
-                    String[] parts = line.split(",");
-                    if (parts.length >= 9) {
-                        ProductSituation prodSituation = ProductSituation.fromCsvRow(parts);
-                        productSituationList.add(prodSituation);
-                    }
+                // 转换为ProductSituation对象
+                for (var dataMap : dataList) {
+                    ProductSituation prodSituation = ProductSituation.fromExcelRow(dataMap);
+                    productSituationList.add(prodSituation);
                 }
             }
 
@@ -353,9 +366,9 @@ public class MultiFactoryInvoiceCalculator extends JFrame {
                     String.format("成功加载 %d 家工厂数据！", productSituationList.size()),
                     "加载成功", JOptionPane.INFORMATION_MESSAGE);
 
-        } catch ( IOException | NumberFormatException e ) {
+        } catch (ExcelIOException | IOException e) {
             JOptionPane.showMessageDialog(this,
-                    "CSV文件读取失败：" + e.getMessage(),
+                    "Excel文件读取失败：" + e.getMessage(),
                     "错误", JOptionPane.ERROR_MESSAGE);
         }
     }
@@ -636,7 +649,7 @@ public class MultiFactoryInvoiceCalculator extends JFrame {
     private void clearAllData() {
         productSituationList.clear();
         tableModel.setRowCount(0);
-        csvFilePathField.setText("");
+        excelFilePathField.setText("");
         calculationResultArea.setText("");
         cashFlowResultArea.setText("");
         lastCalculationResult = null;
@@ -644,7 +657,7 @@ public class MultiFactoryInvoiceCalculator extends JFrame {
     }
     
     /**
-     * 导出计算结果到CSV文件
+     * 导出计算结果到Excel文件
      */
     private void exportCalculationResults() {
         if (lastCalculationResult == null) {
@@ -654,22 +667,22 @@ public class MultiFactoryInvoiceCalculator extends JFrame {
         
         JFileChooser fileChooser = new JFileChooser();
         fileChooser.setDialogTitle("导出计算结果");
-        fileChooser.setFileFilter(new FileNameExtensionFilter("CSV文件 (*.csv)", "csv"));
-        fileChooser.setSelectedFile(new java.io.File("multi_factory_calculation_results.csv"));
+        fileChooser.setFileFilter(new FileNameExtensionFilter("Excel文件 (*.xlsx)", "xlsx"));
+        fileChooser.setSelectedFile(new java.io.File("multi_factory_calculation_results.xlsx"));
         
         if (fileChooser.showSaveDialog(this) == JFileChooser.APPROVE_OPTION) {
             java.io.File selectedFile = fileChooser.getSelectedFile();
             String filePath = selectedFile.getAbsolutePath();
-            if (!filePath.toLowerCase().endsWith(".csv")) {
-                filePath += ".csv";
+            if (!filePath.toLowerCase().endsWith(".xlsx")) {
+                filePath += ".xlsx";
             }
             
             try {
-                exportToCSV(filePath);
+                exportToExcel(filePath);
                 JOptionPane.showMessageDialog(this, 
                     "计算结果已成功导出到：\n" + filePath, 
                     "导出成功", JOptionPane.INFORMATION_MESSAGE);
-            } catch (IOException e) {
+            } catch (ExcelIOException | IOException e) {
                 JOptionPane.showMessageDialog(this, 
                     "导出失败：" + e.getMessage(), 
                     "错误", JOptionPane.ERROR_MESSAGE);
@@ -759,6 +772,87 @@ public class MultiFactoryInvoiceCalculator extends JFrame {
         if (percentage == null) return "0";
         return percentage.multiply(BigDecimal.valueOf(100))
                 .setScale(2, RoundingMode.HALF_UP).toString() + "%";
+    }
+    
+    /**
+     * 将计算结果写入Excel文件（使用模板格式）
+     */
+    private void exportToExcel(String filePath) throws ExcelIOException, IOException {
+        // 使用ResourceUtil加载输出模板
+        try (InputStream templateStream = ResourceUtil.getInputStream(RESULT_TEMPLATE_FILE_RELATIVE_PATH)) {
+            
+            if (templateStream == null) {
+                throw new ExcelIOException("找不到输出模板文件: " + RESULT_TEMPLATE_FILE_RELATIVE_PATH);
+            }
+
+            // 创建构建数据集合的对象映射
+            Map<String, Map<String, List<ProductSituation>>> prodSituationFactoryProductMap =
+                    productSituationList.stream().collect(
+                            groupingBy(ProductSituation::factoryName,
+                                    groupingBy(ProductSituation::productName)
+                            )
+                    );
+
+            // 使用AlternatingRowsWriter写入数据
+            AlternatingRowsWriter writer = ExcelIO.alternatingRows(templateStream)
+//                    .encoding("UTF-8");
+                    .encoding( StandardCharsets.UTF_8 );
+
+            // 设置Sheet名称和表头
+            writer.sheet("多工厂分配结果")
+                    .header(
+                            ProductCalculationDetail.HEADER_FACTORY_NAME,
+                            ProductCalculationDetail.HEADER_PRODUCT_NAME,
+                            ProductCalculationDetail.HEADER_TAX_REBATE_RATE,
+                            ProductCalculationDetail.HEADER_ACTUAL_PURCHASE_AMOUNT,
+                            ProductCalculationDetail.HEADER_PREPAID_AMOUNT,
+                            ProductCalculationDetail.HEADER_TAX_POINT,
+                            ProductCalculationDetail.HEADER_AGREE_TO_INVOICE_AGENT,
+                            ProductCalculationDetail.HEADER_ABLE_TO_INVOICE_OVERPRICE,
+                            ProductCalculationDetail.HEADER_INVOICE_AMOUNT,
+                            ProductCalculationDetail.HEADER_TAX_REBATE_AMOUNT,
+                            ProductCalculationDetail.HEADER_AGENT_BALANCE_BEFORE_SHIPMENT,
+                            ProductCalculationDetail.HEADER_AGENT_BALANCE_AFTER_REBATING,
+                            ProductCalculationDetail.HEADER_OVERPRICE_TAX,
+                            ProductCalculationDetail.HEADER_PREPAYMENT_REFUND,
+                            ProductCalculationDetail.HEADER_OVERPRICE_REFUND
+                    );
+
+            // 填入数据行
+            List<ProductCalculationDetail> details = lastCalculationResult.productCalculationDetails();
+            for (ProductCalculationDetail detail : details) {
+                // 获取对应的ProductSituation数据
+                String factoryName = detail.factoryName();
+                String productName = detail.productName();
+                ProductSituation prodSituation = prodSituationFactoryProductMap
+                        .get(factoryName)
+                        .get(productName)
+                        .getFirst();
+
+                writer.row(
+                        factoryName,
+                        productName,
+//                        MultiFactoryInvoiceCalculationService.formatPercentage(prodSituation.taxRebateRate()),
+                        prodSituation.taxRebateRate(),
+                        detail.actualPurchaseAmount(),
+                        prodSituation.prepaidAmount(),
+//                        MultiFactoryInvoiceCalculationService.formatPercentage(prodSituation.taxPoint()),
+                        prodSituation.taxPoint(),
+                        prodSituation.agreeToInvoiceToAgent() ? "是" : "否",
+                        prodSituation.ableToInvoiceWithOverprice() ? "是" : "否",
+                        detail.invoiceAmount(),
+                        detail.taxRebateAmount(),
+                        detail.agentBalanceToFactoryBeforeShipment(),
+                        detail.agentBalanceToFactoryAfterRebating(),
+                        detail.overpriceTax(),
+                        detail.prepaymentRefundAmount(),
+                        detail.overpriceRefundFromFactory()
+                );
+            }
+
+            // 保存文件
+            writer.saveAs(filePath);
+        }
     }
     
     /**
