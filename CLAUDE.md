@@ -17,7 +17,7 @@ This is a professional Java Swing-based foreign trade agent invoice calculation 
 2. **Multi-Factory/Supplier Calculator** (`MultiFactoryInvoiceCalculator`) - Manages complex scenarios involving multiple factories and suppliers:
    - Product-specific tax rebate rate calculation
    - Mixed invoicing scenarios (factories + trading company as suppliers)
-   - CSV data import/export functionality  
+   - Excel data import/export functionality with professional formatting  
    - Intelligent factory/supplier allocation algorithms
    - Comprehensive financial flow analysis
    - Professional table-based result display with individual tax rates
@@ -48,7 +48,7 @@ java -jar target/export-agent-invoice-calculator-1.0-jar-with-dependencies.jar
 ### Testing and Quality Assurance
 - **Manual Testing Only** - This is a GUI-focused application without automated test infrastructure
 - **Interactive Testing** - All functionality is validated through the Swing interface
-- **Real-world Data Testing** - Use example CSV files in `examples/` directory for comprehensive testing
+- **Real-world Data Testing** - Use example Excel files in `examples/` directory for comprehensive testing
 
 ## System Architecture
 
@@ -77,7 +77,7 @@ Both main calculators implement singleton pattern for:
 - **`MultiFactoryInvoiceCalculator.java`** (Singleton)  
   - Multi-factory/supplier allocation management with product-specific tax rates
   - Mixed scenario handling (factories + trading company as suppliers)
-  - CSV import/export operations (9-column format)
+  - Excel import/export operations (9-column format)
   - Per-product invoice amount calculation and aggregation
   - Complex financial flow analysis
   - Simplified relative-ratio-only commission mode
@@ -95,7 +95,7 @@ Both main calculators implement singleton pattern for:
 - **`CalculationResult`** - Single calculation results with breakdown
 - **`MultiProductCalculationResult`** - Comprehensive multi-product results
 - **`ProductCalculationDetail`** - Individual product calculation details
-- **`ProductSituation`** - Factory/product configuration from CSV
+- **`ProductSituation`** - Factory/product configuration from Excel
 - **`FactoryAllocation`** - Factory-specific allocation results
 
 ## Core Business Logic
@@ -156,8 +156,8 @@ The multi-factory calculator handles complex invoicing scenarios where some fact
 
 ## Data Formats and Integration
 
-### CSV File Structure
-Multi-factory/supplier calculator expects 9-column CSV format:
+### Excel File Structure
+Multi-factory/supplier calculator expects 9-column Excel format (.xlsx):
 ```csv
 工厂名称,产品名称,退税率,PI外币销售金额,实际货值,已预付金额,税点,同意开票给代理公司,可超额开票
 华东机械厂,球笼万向节,13.00%,15550,100000,20000,10.00%,是,否
@@ -221,9 +221,9 @@ public static final DecimalFormat EXCHANGE_RATE_FORMAT = new DecimalFormat("#,##
 
 #### Multi-Factory/Supplier Calculator  
 - **Structured Layout** - Clear separation of input, configuration, operations, and results
-- **CSV Integration** - File browser with proper filtering and error handling
+- **Excel Integration** - File browser with proper filtering and error handling for .xlsx files
 - **Table Display** - Professional data grid with tax rebate rate column and comprehensive structure
-- **Export Capability** - Full result export with proper CSV formatting including individual tax rates
+- **Export Capability** - Full result export with professional Excel formatting including individual tax rates
 
 ### Navigation System
 - **Seamless Switching** - Singleton instances maintain state across navigation
@@ -328,8 +328,8 @@ for (ProductSituation prodSituation : productSituationList) {
 - Ensured all invoice amounts ≥ actual purchase values
 - Maintained mathematical consistency between total and individual allocations
 
-#### Secondary Fix: CSV Data Alignment
-**Problem**: Data misalignment between input and output CSV files due to processing order changes.
+#### Secondary Fix: Excel Data Alignment
+**Problem**: Data misalignment between input and output Excel files due to processing order changes.
 
 **Solution**: Replaced index-based matching with factory name + product name matching in export logic.
 
@@ -337,4 +337,4 @@ for (ProductSituation prodSituation : productSituationList) {
 - **Test Scenarios**: Mixed factory participation (some agreeing to invoice agent, others not)
 - **Mathematical Validation**: All calculations now produce positive, realistic results
 - **Business Accuracy**: Correctly handles 平进平出 scenarios alongside optimized allocations
-- **Data Integrity**: CSV export/import maintains perfect data alignment
+- **Data Integrity**: Excel export/import maintains perfect data alignment
